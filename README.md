@@ -18,6 +18,8 @@
     <em>SYSTEMatic: Systematically Seizing SYSTEM Rights.</em>
     <br>
     Token Impersonation POC. Alternative to PSExec for token theft.
+    <br>
+    From Administrator to NT Authority\SYSTEM.
 </p>
 
 <!-- Links & Demo -->
