@@ -19,7 +19,7 @@
     <br>
     Token Impersonation POC. Alternative to PSExec for token theft.
     <br>
-    From Administrator to NT Authority\SYSTEM.
+    <em>From Administrator to NT Authority\SYSTEM.</em>
 </p>
 
 <!-- Links & Demo -->
@@ -50,23 +50,19 @@
 
 ## 📖 About
 
-SYSTEMatic is a straightforward and effective Proof of Concept (POC) tool designed for the purpose of seizing SYSTEM rights through token impersonation. It serves as a practical alternative to tools like PSExec, offering a more focused approach in scenarios of token theft and rights escalation within Windows environments.
-
-### ⚙️ Technical Overview:
-
-Token Impersonation Method: SYSTEMatic utilizes a methodical approach to impersonate tokens, facilitating the elevation to SYSTEM privileges. This approach is particularly useful in environments where traditional privilege escalation methods are less effective.
-
-Lightweight and Direct: The tool is designed to be lightweight and direct, ensuring minimal overhead and ease of use for those familiar with command-line interfaces.
-
-Targeted Functionality: SYSTEMatic is specifically tailored for scenarios that require quick and efficient acquisition of SYSTEM rights, making it a valuable tool for security testing and administrative tasks.
+SYSTEMatic is a streamlined and effective Proof of Concept (POC) tool specifically designed for achieving SYSTEM-level access through token impersonation in Windows environments. This tool stands out for its focused and simplified approach, presenting a specialized alternative to utilities like PSExec. SYSTEMatic excels in scenarios requiring privilege escalation, seamlessly transitioning from administrator-level to SYSTEM-level privileges.
 
 <p align="center">
   <img src="https://github.com/franckferman/SYSTEMatic/blob/main/docs/github/graphical_resources/Screenshot-SYSTEMatic_Demo.png" alt="SYSTEMatic Demo Screenshot" width="auto" height="auto">
 </p>
 
-### 🎯 Intended Use:
+### ⚙️ Technical Overview:
 
-SYSTEMatic is intended for use in controlled environments for security research, educational purposes, or network administration. Users should adhere to ethical guidelines and legal requirements when deploying this tool.
+Token Impersonation: SYSTEMatic performs token impersonation by extracting and duplicating a SYSTEM token from an active process using Windows API functions like OpenProcess, OpenProcessToken, and DuplicateTokenEx. This allows it to operate with SYSTEM-level privileges.
+
+Lightweight and Direct: Designed for efficiency and straightforward use, the program is lightweight and directly interacts with system processes and tokens, minimizing complexity and resource usage.
+
+Targeted Functionality: Specifically focuses on elevating privileges to the SYSTEM level by duplicating and using SYSTEM tokens, a targeted approach for precise security operations.
 
 <p align="right">(<a href="#top">🔼 Back to top</a>)</p>
 
