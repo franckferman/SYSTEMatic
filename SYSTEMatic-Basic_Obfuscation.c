@@ -38,6 +38,8 @@ typedef BOOL(WINAPI* PFN_OPENPROCESSTOKEN)(HANDLE, DWORD, PHANDLE);
 PFN_OPENPROCESSTOKEN dynamicOpenProcessToken = NULL;
 typedef int (WINAPI* PFN_MultiByteToWideChar)(UINT, DWORD, LPCCH, int, LPWSTR, int);
 PFN_MultiByteToWideChar dynamicMultiByteToWideChar = NULL;
+typedef BOOL(WINAPI* PFN_DUPLICATETOKENEX)(HANDLE, DWORD, LPSECURITY_ATTRIBUTES, SECURITY_IMPERSONATION_LEVEL, TOKEN_TYPE, PHANDLE);
+PFN_DUPLICATETOKENEX dynamicDuplicateTokenEx = NULL;
 
 void LogError(const char* errorMessage, DWORD lastError) {
     fprintf(stderr, errorMessage, lastError);
@@ -58,8 +60,9 @@ BOOL LoadDynamicFunctions() {
     dynamicOpenProcess = (PFN_OPENPROCESS)GetProcAddress(hKernel32, "OpenProcess");
     dynamicOpenProcessToken = (PFN_OPENPROCESSTOKEN)GetProcAddress(hAdvapi32, "OpenProcessToken");
     dynamicMultiByteToWideChar = (PFN_MultiByteToWideChar)GetProcAddress(hKernel32, "MultiByteToWideChar");
+    dynamicDuplicateTokenEx = (PFN_DUPLICATETOKENEX)GetProcAddress(hAdvapi32, "DuplicateTokenEx");
 
-    if (!dynamicCreateToolhelp32Snapshot || !dynamicOpenProcess || !dynamicOpenProcessToken || !dynamicMultiByteToWideChar) {
+    if (!dynamicCreateToolhelp32Snapshot || !dynamicOpenProcess || !dynamicOpenProcessToken || !dynamicMultiByteToWideChar || !dynamicDuplicateTokenEx) {
         fprintf(stderr, "Failed to load one or more functions.\n");
         FreeLibrary(hKernel32);
         FreeLibrary(hAdvapi32);
@@ -278,7 +281,7 @@ int main(int argc, char* argv[]) {
 
         char* unshiftPath = malloc(len + 1);
         if (unshiftPath == NULL) {
-            fprintf(stderr, "Erreur d'allocation mémoire.\n");
+            fprintf(stderr, "Erreur d'allocation m�moire.\n");
             freeMatrix(mat1, rows);
             freeMatrix(mat2, rows);
             freeMatrix(result, rows);
