@@ -281,7 +281,7 @@ int main(int argc, char* argv[]) {
 
         char* unshiftPath = malloc(len + 1);
         if (unshiftPath == NULL) {
-            fprintf(stderr, "Erreur d'allocation m�moire.\n");
+            fprintf(stderr, "Memory allocation error.\n");
             freeMatrix(mat1, rows);
             freeMatrix(mat2, rows);
             freeMatrix(result, rows);
