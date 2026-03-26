@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: make polymorphic
+
+      - name: Sign
+        run: |
+          sudo apt-get install -y osslsigncode
+          openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem \
+            -days 3650 -nodes \
+            -subj "/CN=Franck Ferman"
+          openssl pkcs12 -export -out cert.pfx \
+            -inkey key.pem -in cert.pem -passout pass:
+          osslsigncode sign -pkcs12 cert.pfx -pass "" \
+            -n "SYSTEMatic" \
+            -i "https://github.com/franckferman/SYSTEMatic" \
+            -t http://timestamp.digicert.com \
+            -in SYSTEMatic.exe -out SYSTEMatic_signed.exe
+          mv SYSTEMatic_signed.exe SYSTEMatic.exe
+          rm -f key.pem cert.pem cert.pfx
+
+      - name: Generate shellcode
+        run: pip install -q donut-shellcode && python3 -c "import donut; open('SYSTEMatic.bin','wb').write(donut.create(file='SYSTEMatic.exe'))"
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          files: |
+            SYSTEMatic.exe
+            SYSTEMatic.bin
+          generate_release_notes: true
