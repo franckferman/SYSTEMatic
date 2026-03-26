@@ -1,0 +1,100 @@
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.so.*
+*.dylib
+*.a
+*.lib
+*.o
+*.obj
+*.lo
+*.la
+*.pdb
+*.ilk
+*.iobj
+*.ipdb
+*.idb
+*.map
+
+# SYSTEMatic outputs
+SYSTEMatic.bin
+
+# Signing artifacts
+*.pem
+*.pfx
+*.cer
+*.p12
+
+# Compiler intermediate
+*.d
+*.dep
+*.gcno
+*.gcda
+*.gcov
+*.profraw
+*.profdata
+
+# CMake
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+
+# Visual Studio
+.vs/
+[Bb]in/
+[Oo]bj/
+x64/
+*.user
+*.suo
+*.sln.docstates
+*.sdf
+*.cache
+*.VC.db
+*.VC.opendb
+_ReSharper*/
+*.ReSharper
+*.dotCover
+TestResults/
+*.ncb
+*.opensdf
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+*.orig
+*~
+*.code-workspace
+*.sublime-project
+*.sublime-workspace
+*.iml
+
+# OS
+.DS_Store
+.AppleDouble
+.Spotlight-V100/
+.Trashes/
+._*
+__MACOSX/
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Logs
+*.log
+*.log.*
+
+# Runtime
+*.pid
+*.lock
+*.sock
+nohup.out
+core
+core.*
